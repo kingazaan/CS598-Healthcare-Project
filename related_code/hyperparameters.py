@@ -1,6 +1,8 @@
 '''
 Feb 2019 by Sebastiano Barbieri
 s.barbieri@unsw.edu.au
+
+April 2023 - Azaan Barlas
 '''
 import torch
 import math
@@ -8,9 +10,9 @@ import math
 class Hyperparameters:
   '''Hyperparameters'''
   # data
-  mimic_dir = '../../MIMIC-III Clinical Database/uncompressed/'
-  data_dir = '../data/'
-  logdir = '../logdir/' # log directory  
+  mimic_dir = 'C:/Users/azaan/OneDrive/Documents/GitHub/CS598-Healthcare-Project/MIMIC-III Clinical Database/'
+  data_dir = 'C:/Users/azaan/OneDrive/Documents/GitHub/CS598-Healthcare-Project/data/'
+  logdir = 'C:/Users/azaan/OneDrive/Documents/GitHub/CS598-Healthcare-Project/logdir/' # log directory  
 
   # model
   min_count = 100 # words whose occurred less than min_cnt are encoded as OTHER

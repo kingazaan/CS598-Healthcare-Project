@@ -45,7 +45,11 @@ if __name__ == '__main__':
   # static variables
   print('Create static array...')
   icu_pat = pd.get_dummies(icu_pat, columns = ['ADMISSION_LOCATION', 'INSURANCE', 'MARITAL_STATUS', 'ETHNICITY'])
-  icu_pat.drop(columns=['ADMISSION_LOCATION_Emergency Room Admit', 'INSURANCE_Medicare', 'MARITAL_STATUS_Married/Life Partner', 'ETHNICITY_White'], inplace=True) # drop reference columns
+  ## AZAAN: Ignoring the drop reference columns because this is demo dataset, will bring it back for real dataset
+#   pd.set_option('display.max_columns', None)
+#   print(icu_pat.columns)
+#   print(icu_pat)
+#   icu_pat.drop(columns=['ADMISSION_LOCATION_Emergency Room Admit', 'INSURANCE_Medicare', 'MARITAL_STATUS_Married/Life Partner', 'ETHNICITY_White'], inplace=True) # drop reference columns
   static_columns = icu_pat.columns.str.contains('AGE|GENDER_M|LOS|NUM_RECENT_ADMISSIONS|ADMISSION_LOCATION|INSURANCE|MARITAL_STATUS|ETHNICITY|PRE_ICU_LOS|ELECTIVE_SURGERY')
   static = icu_pat.loc[:, static_columns].values
   static_vars = icu_pat.loc[:, static_columns].columns.values.tolist()
