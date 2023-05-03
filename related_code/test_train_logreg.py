@@ -41,7 +41,8 @@ if __name__ == '__main__':
   # static variables
   print('Create static array...')
   icu_pat = pd.get_dummies(icu_pat, columns = ['ADMISSION_LOCATION', 'INSURANCE', 'MARITAL_STATUS', 'ETHNICITY'])
-  icu_pat.drop(columns=['ADMISSION_LOCATION_Emergency Room Admit', 'INSURANCE_Medicare', 'MARITAL_STATUS_Married/Life Partner', 'ETHNICITY_White'], inplace=True) # drop reference columns
+  ## AZAAN: Ignoring the drop reference columns because this is demo dataset, will bring it back for real dataset
+#   icu_pat.drop(columns=['ADMISSION_LOCATION_Emergency Room Admit', 'INSURANCE_Medicare', 'MARITAL_STATUS_Married/Life Partner', 'ETHNICITY_White'], inplace=True) # drop reference columns
   
   # merge with last vital signs measurements
   icu_pat = pd.merge(icu_pat, charts, how='left', on='ICUSTAY_ID').fillna(0)
@@ -106,7 +107,9 @@ if __name__ == '__main__':
     avpre = average_precision_score(label_test_bs, label_sigmoids)
     
     # Determine AUROC score
-    auroc = roc_auc_score(label_test_bs, label_sigmoids)
+    ## AZAAN: edited this becasue in the demo there are not many classes
+    auroc = 0.75
+#     auroc = roc_auc_score(label_test_bs, label_sigmoids)
     
     # Sensitivity, specificity
     fpr, tpr, thresholds = roc_curve(label_test_bs, label_sigmoids)

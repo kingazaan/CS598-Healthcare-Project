@@ -18,7 +18,9 @@ class Hyperparameters:
   min_count = 100 # words whose occurred less than min_cnt are encoded as OTHER
     
   # training
-  batch_size = 128
+  ## AZAAN: made a smaller batch size to run easier
+  batch_size = 2
+#   batch_size = 128
   num_epochs = 80
   dropout_rate = 0.5
   patience = 10 # early stopping
