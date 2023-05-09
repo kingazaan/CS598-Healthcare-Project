@@ -75,7 +75,9 @@ if __name__ == '__main__':
 
       # forward + backward + optimize
       label_pred, _ = net(stat, dp, cp, dp_t, cp_t)
-      loss = criterion(label_pred, label)
+      ## AZAAN: added unsqueeze of 1 to label; coud also have squeezed from lable_pred
+        # print(label_pred.shape)
+      loss = criterion(label_pred, label.unsqueeze(1))
       loss.backward()
       optimizer.step()
     

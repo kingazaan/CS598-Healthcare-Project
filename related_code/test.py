@@ -98,8 +98,9 @@ if __name__ == '__main__':
     
     # Determine AUROC score
     ## AZAAN: changed this to 0.75 jsut for now witht he smaller dataset
-    auroc = 0.75
-#     auroc = roc_auc_score(label_test, label_sigmoids)
+    ## removed edit
+    # auroc = 0.75
+    auroc = roc_auc_score(label_test, label_sigmoids)
 
     # Sensitivity, specificity
     fpr, tpr, thresholds = roc_curve(label_test, label_sigmoids)
@@ -130,7 +131,9 @@ if __name__ == '__main__':
     specificity_vec[sample]  = specificity
     ppv_vec[sample]  = ppv
     npv_vec[sample]  = npv    
-
+  
+  # show the dependent variable
+  print(label_pred, label_test)
   avpre_mean = np.mean(avpre_vec)
   avpre_lci, avpre_uci = st.t.interval(0.95, hp.bootstrap_samples-1, loc=avpre_mean, scale=st.sem(avpre_vec))
   auroc_mean = np.mean(auroc_vec)

@@ -2,7 +2,8 @@
 Feb 2019 by Sebastiano Barbieri
 s.barbieri@unsw.edu.au
 
-April 2023 - Azaan Barlas
+May 2023 edited by Azaan Barlas
+abarlas2@illinois.edu
 '''
 import torch
 import math
@@ -10,17 +11,17 @@ import math
 class Hyperparameters:
   '''Hyperparameters'''
   # data
-  mimic_dir = 'C:/Users/azaan/OneDrive/Documents/GitHub/CS598-Healthcare-Project/MIMIC-III Clinical Database/'
-  data_dir = 'C:/Users/azaan/OneDrive/Documents/GitHub/CS598-Healthcare-Project/data/'
-  logdir = 'C:/Users/azaan/OneDrive/Documents/GitHub/CS598-Healthcare-Project/logdir/' # log directory  
+  mimic_dir = 'MIMIC-III Clinical Database/'
+  data_dir = 'data/'
+  logdir = 'logdir/' # log directory  
 
   # model
   min_count = 100 # words whose occurred less than min_cnt are encoded as OTHER
     
   # training
-  ## AZAAN: made a smaller batch size to run easier
-  batch_size = 2
-#   batch_size = 128
+  ## AZAAN: made a smaller batch size and epoch number to run easier
+  # batch_size = 2
+  batch_size = 128
   num_epochs = 80
   dropout_rate = 0.5
   patience = 10 # early stopping
@@ -39,11 +40,14 @@ class Hyperparameters:
   # net_variant = 'ode_birnn_attention'#
   # net_variant = 'ode_attention'#
   # net_variant = 'attention_concat_time'
-  net_variant = 'birnn_ode_decay'#
+  # net_variant = 'birnn_ode_decay'#
   # net_variant = 'birnn_ode_decay_attention'#
   # net_variant = 'mce_attention'#
   # net_variant = 'mce_birnn'#
   # net_variant = 'mce_birnn_attention'#
+  # net_variant = 'vanilla_rnn'#
+  # net_variant = 'rnn_log'#
+  net_variant = 'rnn_bayesian'#
   
   # bootstrapping
   np_seed = 1234

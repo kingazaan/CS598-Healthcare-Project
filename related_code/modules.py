@@ -1,6 +1,9 @@
 '''
 Nov 2018 by Sebastiano Barbieri
 s.barbieri@unsw.edu.au
+
+May 2023 edited by Azaan Barlas
+abarlas2@illinois.edu
 '''
 
 import torch
@@ -11,7 +14,44 @@ import numpy as np
 from hyperparameters import Hyperparameters as hp
 from pdb import set_trace as bp
 from modules_ode import *
+# added gpytorch
+import gpytorch
 
+## AZAAN; added vanilla RNN
+# class VanillaRNN:
+    
+#     def __init__(self, input_size, hidden_size, output_size):
+#         self.hidden_size = hidden_size
+        
+#         # initialize weight matrices and biases
+#         self.weights_input = np.random.randn(hidden_size, input_size)
+#         self.weights_hidden = np.random.randn(hidden_size, hidden_size)
+#         self.weights_output = np.random.randn(output_size, hidden_size)
+#         self.bias_hidden = np.zeros((hidden_size, 1))
+#         self.bias_output = np.zeros((output_size, 1))
+        
+#     def forward(self, inputs):
+#         # initialize hidden state as zeros
+#         hidden_state = np.zeros((self.hidden_size, 1))
+        
+#         # list to store hidden states and outputs at each time step
+#         hidden_states = []
+#         outputs = []
+        
+#         # loop over time steps
+#         for input_t in inputs:
+#             # compute hidden state and output at current time step
+#             hidden_state = np.tanh(np.dot(self.weights_input, input_t) + np.dot(self.weights_hidden, hidden_state) + self.bias_hidden)
+#             output_t = np.dot(self.weights_output, hidden_state) + self.bias_output
+            
+#             # store hidden state and output
+#             hidden_states.append(hidden_state)
+#             outputs.append(output_t)
+        
+#         # return all hidden states and outputs
+#         return hidden_states, outputs
+
+## ended vanilla RNN
 
 class Attention(torch.nn.Module):
   """
@@ -1167,4 +1207,288 @@ elif hp.net_variant == 'mce_birnn_attention':
       out = self.fc_all(self.dropout(all)).squeeze()
 
       return out, []
+
+
+elif hp.net_variant == 'vanilla_rnn':
+  # RNN
+  class Net(nn.Module):
+    def __init__(self, num_static, num_dp_codes, num_cp_codes):
+      super(Net, self).__init__()
+  
+      # Embedding dimensions
+      self.embed_dim = int(np.ceil((num_dp_codes + num_cp_codes)**0.25))
+  
+      # Precomputed embedding weights
+      self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+      self.emb_weight_dp = torch.Tensor(np.load(hp.data_dir + 'emb_weight_dp_7.npy')).to(self.device)
+      self.emb_weight_cp = torch.Tensor(np.load(hp.data_dir + 'emb_weight_cp_6.npy')).to(self.device)
+  
+      # GRU layer
+      self.gru = nn.GRU(input_size=self.embed_dim+1, hidden_size=self.embed_dim+1, num_layers=1, batch_first=True)
+  
+      # Fully connected output
+      self.fc = nn.Linear(2*(self.embed_dim+1) + num_static, 1)
+
+      # Others
+      self.dropout = nn.Dropout(p=0.5)
+      # print(num_static, num_dp_codes, num_cp_codes)
+
+
+    def forward(self, stat, dp, cp, dp_t, cp_t):
+      # Combine dp and cp sequences
+      combined_seq = torch.cat((dp, cp), dim=1)
+      combined_seq_t = torch.cat((dp_t, cp_t), dim=1)
+  
+      # Embedding
+      ## output dim: batch_size x seq_len x embedding_dim
+      ## tensor 1 is shape (1292, 7), and tensor 2 is shape (620, 1)
+      ## so I need to add dim to tensor 2 to make it same shape accross dimension 1
+      # print('shapes', self.emb_weight_dp.shape, self.emb_weight_cp.shape)
+      # print(torch.cat((self.emb_weight_dp, self.emb_weight_cp)))
+      zeros = torch.zeros(620, 1).to(self.device)
+      self.emb_weight_cp_concat = torch.cat([self.emb_weight_cp, zeros], dim=1)
+      # now both are dim 7 on 2nd dim
+      embedded = F.embedding(combined_seq, torch.cat((self.emb_weight_dp, self.emb_weight_cp_concat), dim=0), padding_idx=0)
+      ## Dropout
+      embedded = self.dropout(embedded)
+  
+      # GRU
+      ## output dim rnn:        batch_size x seq_len x (embedding_dim+1)
+      ## output dim rnn_hidden: batch_size x 1 x (embedding_dim+1)
+      # need to add extra layer to rnn second dimenstion from shape torch.Size([128, 944, 7]) to 8
+      zeros2 = torch.zeros(128, 944, 1).to(self.device)
+      embedded2 = torch.cat([embedded, zeros2], dim=2)
+      # print(embedded2.shape)
+      rnn, rnn_hidden = self.gru(embedded2)
+      ## output dim rnn_hidden: batch_size x (embedding_dim+1)
+      rnn_hidden = rnn_hidden.view(-1, self.embed_dim+1)
+  
+      # Scores
+      ## need to add 2 extra layers to stat
+      zeros3 = torch.zeros(128, 6).to(self.device)
+      stat2 = torch.cat([stat, zeros3], dim=1)
+      # print(stat)
+      # print(rnn_hidden.shape)
+      # print(stat.shape)
+      # print(dp_t[:,-1].unsqueeze(1).shape)
+      # print(cp_t[:,-1].unsqueeze(1).shape)
+      score = self.fc(self.dropout(torch.cat((rnn_hidden, stat2, dp_t[:,-1].unsqueeze(1), cp_t[:,-1].unsqueeze(1)), dim=1)))
+  
+      return score, []
+
+elif hp.net_variant == 'rnn_log':
+  # RNN
+  class Net(nn.Module):
+    def __init__(self, num_static, num_dp_codes, num_cp_codes):
+      super(Net, self).__init__()
+  
+      # Embedding dimensions
+      self.embed_dim = int(np.ceil((num_dp_codes + num_cp_codes)**0.25))
+  
+      # Precomputed embedding weights
+      self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+      self.emb_weight_dp = torch.Tensor(np.load(hp.data_dir + 'emb_weight_dp_7.npy')).to(self.device)
+      self.emb_weight_cp = torch.Tensor(np.load(hp.data_dir + 'emb_weight_cp_6.npy')).to(self.device)
+  
+      # GRU layer
+      self.gru = nn.GRU(input_size=self.embed_dim+1, hidden_size=self.embed_dim+1, num_layers=1, batch_first=True)
+  
+      # Fully connected output
+      self.fc = nn.Linear(2*(self.embed_dim+1) + num_static, 10)
+      self.fc2 = nn.Linear(10, 1)
       
+      # Logistic regression layer
+      self.logistic = nn.Linear(2*(self.embed_dim+1) + num_static, 1)
+      
+      # Others
+      self.dropout = nn.Dropout(p=0.5)
+      # print(num_static, num_dp_codes, num_cp_codes)
+
+
+    def forward(self, stat, dp, cp, dp_t, cp_t):
+      # Combine dp and cp sequences
+      combined_seq = torch.cat((dp, cp), dim=1)
+      combined_seq_t = torch.cat((dp_t, cp_t), dim=1)
+  
+      # Embedding
+      ## output dim: batch_size x seq_len x embedding_dim
+      ## tensor 1 is shape (1292, 7), and tensor 2 is shape (620, 1)
+      ## so I need to add dim to tensor 2 to make it same shape accross dimension 1
+      # print('shapes', self.emb_weight_dp.shape, self.emb_weight_cp.shape)
+      # print(torch.cat((self.emb_weight_dp, self.emb_weight_cp)))
+      zeros = torch.zeros(620, 1).to(self.device)
+      self.emb_weight_cp_concat = torch.cat([self.emb_weight_cp, zeros], dim=1)
+      # now both are dim 7 on 2nd dim
+      embedded = F.embedding(combined_seq, torch.cat((self.emb_weight_dp, self.emb_weight_cp_concat), dim=0), padding_idx=0)
+      ## Dropout
+      embedded = self.dropout(embedded)
+  
+      # GRU
+      ## output dim rnn:        batch_size x seq_len x (embedding_dim+1)
+      ## output dim rnn_hidden: batch_size x 1 x (embedding_dim+1)
+      # need to add extra layer to rnn second dimenstion from shape torch.Size([128, 944, 7]) to 8
+      zeros2 = torch.zeros(128, 944, 1).to(self.device)
+      embedded2 = torch.cat([embedded, zeros2], dim=2)
+      # print(embedded2.shape)
+      rnn, rnn_hidden = self.gru(embedded2)
+      ## output dim rnn_hidden: batch_size x (embedding_dim+1)
+      rnn_hidden = rnn_hidden.view(-1, self.embed_dim+1)
+  
+      # Scores
+      ## need to add 2 extra layers to stat
+      zeros3 = torch.zeros(128, 6).to(self.device)
+      stat2 = torch.cat([stat, zeros3], dim=1)
+      # print(stat)
+      # print(rnn_hidden.shape)
+      # print(stat.shape)
+      # print(dp_t[:,-1].unsqueeze(1).shape)
+      # print(cp_t[:,-1].unsqueeze(1).shape)
+      
+      # logistic regression scoring
+      log_score = self.logistic(self.dropout(torch.cat((rnn_hidden, stat2, dp_t[:,-1].unsqueeze(1), cp_t[:,-1].unsqueeze(1)), dim=1)))
+  
+      return log_score, []
+
+
+elif hp.net_variant == 'rnn_bayesian':
+# Define the Gaussian Process prior
+  class GPPrior(gpytorch.models.ExactGP):
+    def __init__(self, num_dim, lengthscale_prior=1.0):
+      super(GPPrior, self).__init__(gpytorch.lazy.ZeroLazyTensor(), gpytorch.likelihoods.GaussianLikelihood())
+      self.mean_module = gpytorch.means.ConstantMean()
+      self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+  
+      # Set the lengthscale prior
+      self.covar_module.base_kernel.lengthscale = lengthscale_prior
+      self.num_dim = num_dim
+
+      self.mean_module = gpytorch.means.ConstantMean()
+      self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+  
+      # Set the lengthscale prior
+      self.covar_module.base_kernel.lengthscale = lengthscale_prior
+  
+      self.num_dim = num_dim
+    
+    def forward(self, x):
+      mean = self.mean_module(x)
+      covar = self.covar_module(x)
+      return gpytorch.distributions.MultivariateNormal(mean, covar)
+
+  class BRNNCell(nn.Module):
+    def __init__(self, input_size, hidden_size, prior_lengthscale):
+      super(BRNNCell, self).__init__()
+      self.input_size = input_size
+      self.hidden_size = hidden_size
+      self.prior_lengthscale = prior_lengthscale
+
+      # Learnable parameters
+      self.W_ih = nn.Parameter(torch.randn(input_size, hidden_size))
+      self.W_hh = nn.Parameter(torch.randn(hidden_size, hidden_size))
+
+      # Prior distribution
+      self.W_prior = GPPrior(num_dim=hidden_size, lengthscale_prior=self.prior_lengthscale)
+
+    def forward(self, input, hidden):
+      # Mean and variance of prior distribution
+      prior_mean = torch.zeros(hidden.size()).to(hidden.device)
+      prior_var = self.W_prior(torch.eye(self.hidden_size).to(hidden.device)).covariance_matrix
+
+      # Sample from the prior
+      prior_sample = gpytorch.distributions.MultivariateNormal(prior_mean, prior_var).rsample()
+
+      # Compute the output of the cell
+      output = torch.mm(input, self.W_ih) + torch.mm(hidden, self.W_hh + prior_sample)
+      return output
+        
+  class Net(nn.Module):
+    def __init__(self, num_static, num_dp_codes, num_cp_codes, prior_lengthscale=1):
+      super(Net, self).__init__()
+
+      # Embedding dimensions
+      self.embed_dim = int(np.ceil((num_dp_codes + num_cp_codes)**0.25))
+
+      # Precomputed embedding weights
+      self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+      self.emb_weight_dp = torch.Tensor(np.load(hp.data_dir + 'emb_weight_dp_7.npy')).to(self.device)
+      self.emb_weight_cp = torch.Tensor(np.load(hp.data_dir + 'emb_weight_cp_6.npy')).to(self.device)
+
+      # BRNN layer
+      self.hidden_size = self.embed_dim + 1
+      self.gru_fw_bayesian = BRNNCell(input_size=self.embed_dim+1, hidden_size=self.hidden_size, prior_lengthscale=prior_lengthscale)
+      self.gru_bw_bayesian = BRNNCell(input_size=self.embed_dim+1, hidden_size=self.hidden_size, prior_lengthscale=prior_lengthscale)
+
+      # Fully connected output
+      self.fc = nn.Linear(2*(self.embed_dim+1) + num_static, 1)
+
+      # Others
+      self.dropout = nn.Dropout(p=0.5)
+
+    def forward(self, stat, dp, cp, dp_t, cp_t):
+      # Combine dp and cp sequences
+      combined_seq = torch.cat((dp, cp), dim=1)
+      combined_seq_t = torch.cat((dp_t, cp_t), dim=1)
+
+      # Embedding
+      zeros = torch.zeros(620, 1).to(self.device)
+      self.emb_weight_cp_concat = torch.cat([self.emb_weight_cp, zeros], dim=1)
+      embedded = F.embedding(combined_seq, torch.cat((self.emb_weight_dp, self.emb_weight_cp_concat), dim=0), padding_idx=0)
+      embedded = self.dropout(embedded)
+
+      # BRNN
+      rnn_fw_states = []
+      rnn_fw_output = []
+      rnn_bw_states = []
+      rnn_bw_output = []
+
+      # Forward pass
+      rnn_fw_state = torch.zeros(embedded.shape[0], self.hidden_size).to(self.device)
+      for i in range(combined_seq.shape[1]):
+          x_fw = torch.cat((embedded[:,i,:], torch.ones((embedded.shape[0], 1)).to(self.device)), dim=1)
+          rnn_fw_output, rnn_fw_state = self.gru_fw_bayesian(x_fw, rnn_fw_state)
+          rnn_fw_states.append(rnn_fw_state)
+          rnn_fw_output.append(rnn_fw_output)
+
+      # Backward pass
+      rnn_bw_state = torch.zeros(embedded.shape[0], self.hidden_size).to(self.device)
+      for i in range(combined_seq.shape[1]-1, -1, -1):
+          x_bw = torch.cat((embedded[:,i,:], torch.ones((embedded.shape[0], 1)).to(self.device)), dim=1)
+          rnn_bw_output, rnn_bw_state = self.gru_bw_bayesian(x_bw, rnn_bw_state)
+          rnn_bw_states.append(rnn_bw_state)
+          rnn_bw_output.append(rnn_bw_output)
+
+      rnn_fw_output = torch.stack(rnn_fw_output, dim=1)
+      rnn_bw_output = torch.stack(rnn_bw_output[::-1], dim=1)
+      rnn_output = torch.cat((rnn_fw_output, rnn_bw_output), dim=-1)
+
+      ## need to add 2 extra layers to stat
+      zeros3 = torch.zeros(128, 6).to(self.device)
+      stat2 = torch.cat([stat, zeros3], dim=1)
+
+      # Forward pass
+      score_fwd = self.fc(self.dropout(torch.cat((rnn_hidden, stat2, dp_t[:,-1].unsqueeze(1), cp_t[:,-1].unsqueeze(1)), dim=1)))
+
+      # Backward pass using Bayesian RNN
+      # Reverse the input sequences
+      combined_seq_rev = torch.cat((dp.flip([1]), cp.flip([1])), dim=1)
+      combined_seq_t_rev = torch.cat((dp_t.flip([1]), cp_t.flip([1])), dim=1)
+
+      # Embedding
+      zeros_rev = torch.zeros(620, 1).to(self.device)
+      self.emb_weight_cp_concat_rev = torch.cat([zeros_rev, self.emb_weight_cp.flip([0, 1])], dim=1)
+      embedded_rev = F.embedding(combined_seq_rev, torch.cat((self.emb_weight_dp, self.emb_weight_cp_concat_rev), dim=0), padding_idx=0)
+      embedded_rev = self.dropout(embedded_rev)
+
+      # Initialize hidden state
+      h0_bw = torch.zeros(1, 128, self.hidden_size).to(self.device)
+
+      # Initialize the Bayesian RNN
+      self.gru_bw_bayesian = BRNNCell(input_size=self.embed_dim+1, hidden_size=self.hidden_size, prior_lengthscale=prior_lengthscale)
+
+      # Bayesian RNN backward pass
+      score_bw, _ = self.gru_bw_bayesian(embedded_rev, h0_bw, combined_seq_t_rev)
+
+      # Concatenate forward and backward scores
+      score = torch.cat((score_fwd, score_bw[:, -1, :]), dim=1)
+
+      return score, []

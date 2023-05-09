@@ -70,7 +70,8 @@ if __name__ == '__main__':
   print('-----------------------------------------')  
   print('Save...')
   ## AZAAN: commenting out the asserts for now because I am just using mimic-iii demo data
-#   assert len(diag_proc['ICUSTAY_ID'].unique()) == 45298
+  ## uncommenting asserts
+  assert len(diag_proc['ICUSTAY_ID'].unique()) == 45298
   diag_proc.sort_values(by=['ICUSTAY_ID', 'DAYS_TO_OUT'], ascending=[True, True], inplace=True)
   diag_proc.to_pickle(hp.data_dir + 'diag_proc.pkl')
   diag_proc.to_csv(hp.data_dir + 'diag_proc.csv', index=False)

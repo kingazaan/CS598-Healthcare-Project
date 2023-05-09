@@ -70,16 +70,17 @@ if __name__ == '__main__':
   
   # Link icustays and patients tables
   ## AZAAN: commenting out the asserts for now because I am just using mimic-iii demo data
+  ## uncommenting asserts
   print('Link icustays and patients tables...')
   icu_pat = pd.merge(icustays, patients, how='inner', on='SUBJECT_ID')
   icu_pat.sort_values(by=['SUBJECT_ID', 'OUTTIME'], ascending=[True, False], inplace=True)
-#   assert len(icu_pat['SUBJECT_ID'].unique()) == 46476
-#   assert len(icu_pat['ICUSTAY_ID'].unique()) == 61532
+  assert len(icu_pat['SUBJECT_ID'].unique()) == 46476
+  assert len(icu_pat['ICUSTAY_ID'].unique()) == 61532
 
   # Exclude icu stays during which patient died
   icu_pat = icu_pat[~(icu_pat['DOD'] <= icu_pat['OUTTIME'])]
-#   assert len(icu_pat['SUBJECT_ID'].unique()) == 43126
-#   assert len(icu_pat['ICUSTAY_ID'].unique()) == 56745
+  assert len(icu_pat['SUBJECT_ID'].unique()) == 43126
+  assert len(icu_pat['ICUSTAY_ID'].unique()) == 56745
     
   # Determine number of icu discharges in the last 365 days
   print('Compute number of recent admissions...')
@@ -92,24 +93,24 @@ if __name__ == '__main__':
   # Create age variable and exclude patients < 18 y.o.
   icu_pat['AGE'] = (icu_pat['OUTTIME'] - icu_pat['DOB']).dt.days/365.
   icu_pat = icu_pat[icu_pat['AGE'] >= 18]
-#   assert len(icu_pat['SUBJECT_ID'].unique()) == 35233
-#   assert len(icu_pat['ICUSTAY_ID'].unique()) == 48616
+  assert len(icu_pat['SUBJECT_ID'].unique()) == 35233
+  assert len(icu_pat['ICUSTAY_ID'].unique()) == 48616
 
   # Time to next admission (discharge to admission!)
   icu_pat['DAYS_TO_NEXT'] = (icu_pat.groupby(['SUBJECT_ID']).shift(1)['INTIME'] - icu_pat['OUTTIME']).dt.days
 
   # Add early readmission flag (less than 30 days after discharge)
   icu_pat['POSITIVE'] = (icu_pat['DAYS_TO_NEXT'] <= 30)
-#   assert icu_pat['POSITIVE'].sum() == 5495
+  assert icu_pat['POSITIVE'].sum() == 5495
 
   # Add early death flag (less than 30 days after discharge)
   early_death = ((icu_pat['DOD'] - icu_pat['OUTTIME']).dt.days <= 30)
-#   assert early_death.sum() == 3795
+  assert early_death.sum() == 3795
   
   # Censor negative patients who died within less than 30 days after discharge (no chance of readmission)
   icu_pat = icu_pat[icu_pat['POSITIVE'] | ~early_death]
-#   assert len(icu_pat['SUBJECT_ID'].unique()) == 33150
-#   assert len(icu_pat['ICUSTAY_ID'].unique()) == 45298
+  assert len(icu_pat['SUBJECT_ID'].unique()) == 33150
+  assert len(icu_pat['ICUSTAY_ID'].unique()) == 45298
   
   # Clean up
   icu_pat.drop(columns=['DOB', 'DOD', 'DAYS_TO_NEXT'], inplace=True)

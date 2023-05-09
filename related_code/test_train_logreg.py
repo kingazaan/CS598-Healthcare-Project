@@ -42,7 +42,8 @@ if __name__ == '__main__':
   print('Create static array...')
   icu_pat = pd.get_dummies(icu_pat, columns = ['ADMISSION_LOCATION', 'INSURANCE', 'MARITAL_STATUS', 'ETHNICITY'])
   ## AZAAN: Ignoring the drop reference columns because this is demo dataset, will bring it back for real dataset
-#   icu_pat.drop(columns=['ADMISSION_LOCATION_Emergency Room Admit', 'INSURANCE_Medicare', 'MARITAL_STATUS_Married/Life Partner', 'ETHNICITY_White'], inplace=True) # drop reference columns
+  ## brought back for real dataset
+  icu_pat.drop(columns=['ADMISSION_LOCATION_Emergency Room Admit', 'INSURANCE_Medicare', 'MARITAL_STATUS_Married/Life Partner', 'ETHNICITY_White'], inplace=True) # drop reference columns
   
   # merge with last vital signs measurements
   icu_pat = pd.merge(icu_pat, charts, how='left', on='ICUSTAY_ID').fillna(0)
@@ -108,8 +109,9 @@ if __name__ == '__main__':
     
     # Determine AUROC score
     ## AZAAN: edited this becasue in the demo there are not many classes
-    auroc = 0.75
-#     auroc = roc_auc_score(label_test_bs, label_sigmoids)
+    ## removed edit
+    # auroc = 0.75
+    auroc = roc_auc_score(label_test_bs, label_sigmoids)
     
     # Sensitivity, specificity
     fpr, tpr, thresholds = roc_curve(label_test_bs, label_sigmoids)
@@ -124,8 +126,9 @@ if __name__ == '__main__':
     for t in thresholds:
       label_pred = (np.array(label_sigmoids) >= t).astype(int)
       f1_temp = f1_score(label_test_bs, label_pred)
-      ppv_temp = precision_score(label_test_bs, label_pred, pos_label=1)
-      npv_temp = precision_score(label_test_bs, label_pred, pos_label=0)
+      ## for every precision score I am adding zero_division = 0
+      ppv_temp = precision_score(label_test_bs, label_pred, pos_label=1, zero_division=1)
+      npv_temp = precision_score(label_test_bs, label_pred, pos_label=0, zero_division=1)
       if f1_temp > f1:
         f1 = f1_temp
       if (ppv_temp+npv_temp) > (ppv+npv):

@@ -51,7 +51,8 @@ if __name__ == '__main__':
   print('-----------------------------------------')  
   print('Save...')
   ## AZAAN: commenting out the asserts for now because I am just using mimic-iii demo data
-#   assert len(df['ICUSTAY_ID'].unique()) == 45298
+  ## uncommenting asserts
+  assert len(df['ICUSTAY_ID'].unique()) == 45298
   df.sort_values(by=['ICUSTAY_ID', 'HOURS_TO_OUT'], ascending=[True, True], inplace=True)
   df.to_pickle(hp.data_dir + 'charts_prescriptions.pkl')
   df.to_csv(hp.data_dir + 'charts_prescriptions.csv', index=False)
