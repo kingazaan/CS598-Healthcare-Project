@@ -1,0 +1,10 @@
+# Ignore data files
+data/chartevents_reduced.csv
+data/charts_outputs_reduced.csv
+data/charts_outputs_reduced.pkl
+data/charts_prescriptions.csv
+data/charts_prescriptions.pkl
+data/data_arrays.npz
+
+# Ignore archive files
+myarchive.zip
