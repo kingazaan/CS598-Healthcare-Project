@@ -11,6 +11,9 @@ Sukrit Ganesh
 ## Presentation
 [Link to CS598 Presentation Video](CS598_Presentation.mp4)
 
+## Paper
+[CS598_Healthcare_Project_Report__Final_ (1).pdf](https://github.com/kingazaan/CS598-Healthcare-Project/files/13774187/CS598_Healthcare_Project_Report__Final_.1.pdf)
+
 ## Introduction
 The paper we are expanding on (_Benchmarking Deep Learning Architectures for predicting Readmission to the ICU and Describing patients-at-Risk_) utilizes a variety of neural network architectures to predict the probability of patient readmission to an ICU using prior patient medical data. Predicting patient readmission can allow doctors to craft tailored treatment plans for patients and allocate future hospital resources accordingly. Several deep learning architectures that used methods such as attention mechanisms, recurrent layers, neural ordinary differential equations (ODEs), and medical concept embeddings with time-aware attention were used in this paper and trained using the MIMIC-III dataset associated with 45,298 ICU stays for 33,150 patients.
 
